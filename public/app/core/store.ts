@@ -23,7 +23,7 @@ export class Store {
       try {
         ret = JSON.parse(json);
       } catch (error) {
-        console.error(`Error parsing store object: ${key}. Returning default: ${def}. [${error}]`);
+        throw new Error(`Error parsing store object: ${key}. Returning default: ${def}. [${error}]`);
       }
     }
     return ret;
@@ -35,15 +35,13 @@ export class Store {
     try {
       json = JSON.stringify(value);
     } catch (error) {
-      console.error(`Could not stringify object: ${key}. [${error}]`);
-      return false;
+      throw new Error(`Could not stringify object: ${key}. [${error}]`);
     }
     try {
       this.set(key, json);
     } catch (error) {
       // Likely hitting storage quota
-      console.error(`Could not save item in localStorage: ${key}. [${error}]`);
-      return false;
+      throw new Error(`Could not save item in localStorage: ${key}. [${error}]`);
     }
     return true;
   }

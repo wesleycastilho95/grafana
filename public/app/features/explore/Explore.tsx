@@ -8,6 +8,7 @@ import memoizeOne from 'memoize-one';
 
 // Services & Utils
 import store from 'app/core/store';
+import appEvents from 'app/core/app_events';
 
 // Components
 import { ErrorBoundaryAlert, stylesFactory } from '@grafana/ui';
@@ -39,6 +40,7 @@ import {
   AbsoluteTimeRange,
   LoadingState,
   ExploreMode,
+  AppEvents,
 } from '@grafana/data';
 
 import { ExploreItemState, ExploreUrlState, ExploreId, ExploreUpdateState, ExploreUIState } from 'app/types/explore';
@@ -271,6 +273,10 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
     );
   };
 
+  onError = (error: string) => {
+    return appEvents.emit(AppEvents.alertError, [error]);
+  };
+
   render() {
     const {
       datasourceInstance,
@@ -337,7 +343,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
 
                 return (
                   <main className={`m-t-2 ${styles.logsMain}`} style={{ width }}>
-                    <ErrorBoundaryAlert>
+                    <ErrorBoundaryAlert onError={this.onError}>
                       {showStartPage && StartPage && (
                         <div className={'grafana-info-box grafana-info-box--max-lg'}>
                           <StartPage

@@ -48,6 +48,7 @@ interface WithAlertBoxProps {
   title?: string;
   children: ReactNode;
   style?: 'page' | 'alertbox';
+  onError?: (error: string) => void;
 }
 
 export class ErrorBoundaryAlert extends PureComponent<WithAlertBoxProps> {
@@ -57,13 +58,18 @@ export class ErrorBoundaryAlert extends PureComponent<WithAlertBoxProps> {
   };
 
   render() {
-    const { title, children, style } = this.props;
+    const { title, children, style, onError } = this.props;
 
     return (
       <ErrorBoundary>
         {({ error, errorInfo }) => {
           if (!errorInfo) {
             return children;
+          }
+
+          if (onError && error) {
+            onError(error.toString());
+            return null;
           }
 
           if (style === 'alertbox') {
