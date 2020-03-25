@@ -5,7 +5,7 @@ import { act } from 'react-dom/test-utils';
 import { DataSourceInstanceSettings } from '@grafana/data';
 import { TemplateSrv } from 'app/features/templating/template_srv';
 import { CustomVariable } from 'app/features/templating/all';
-import { MetricsQueryEditor, Props } from './MetricsQueryEditor';
+import { MetricsQueryEditor, Props, normalizeQuery } from './MetricsQueryEditor';
 import { CloudWatchDatasource } from '../datasource';
 import { CloudWatchMetricsQuery } from '../types';
 
@@ -72,9 +72,10 @@ describe('QueryEditor', () => {
 
   describe('should use correct default values', () => {
     it('when region is null is display default in the label', async () => {
+      // @ts-ignore strict null error TS2345: Argument of type '() => Promise<void>' is not assignable to parameter of type '() => void | undefined'.
       await act(async () => {
         const props = setup();
-        props.query.region = null;
+        props.query.region = (null as unknown) as string;
         const wrapper = mount(<MetricsQueryEditor {...props} />);
         expect(
           wrapper
@@ -108,6 +109,21 @@ describe('QueryEditor', () => {
         expect(region).toEqual('default');
         expect(statistics).toEqual(['Average']);
         expect(dimensions).toEqual({});
+      });
+      it('should normalize query with default values', () => {
+        expect(normalizeQuery({ refId: '42' } as any)).toEqual({
+          namespace: '',
+          metricName: '',
+          expression: '',
+          dimensions: {},
+          region: 'default',
+          id: '',
+          alias: '',
+          statistics: ['Average'],
+          matchExact: true,
+          period: '',
+          refId: '42',
+        });
       });
     });
   });

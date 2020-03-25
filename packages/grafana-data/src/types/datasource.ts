@@ -184,6 +184,7 @@ export abstract class DataSourceApi<
   constructor(instanceSettings: DataSourceInstanceSettings<TOptions>) {
     this.name = instanceSettings.name;
     this.id = instanceSettings.id;
+    this.meta = {} as DataSourcePluginMeta;
   }
 
   /**
@@ -248,7 +249,7 @@ export abstract class DataSourceApi<
   /**
    * static information about the datasource
    */
-  meta?: DataSourcePluginMeta;
+  meta: DataSourcePluginMeta;
 
   /**
    * Used by alerting to check if query contains template variables
@@ -432,6 +433,10 @@ export interface DataQueryRequest<TQuery extends DataQuery = DataQuery> {
   // Request Timing
   startTime: number;
   endTime?: number;
+}
+
+export interface DataQueryTimings {
+  dataProcessingTime: number;
 }
 
 export interface QueryFix {

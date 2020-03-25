@@ -1,4 +1,6 @@
 import React, { PureComponent, ChangeEvent } from 'react';
+import isEmpty from 'lodash/isEmpty';
+
 import { ExploreQueryFieldProps } from '@grafana/data';
 import { Input, ValidationEvents, EventsWithValidation, Switch } from '@grafana/ui';
 import { CloudWatchQuery, CloudWatchMetricsQuery } from '../types';
@@ -18,6 +20,33 @@ const idValidationEvents: ValidationEvents = {
       errorMessage: 'Invalid format. Only alphanumeric characters and underscores are allowed',
     },
   ],
+};
+
+export const normalizeQuery = ({
+  namespace,
+  metricName,
+  expression,
+  dimensions,
+  region,
+  id,
+  alias,
+  statistics,
+  period,
+  ...rest
+}: CloudWatchMetricsQuery): CloudWatchMetricsQuery => {
+  const normalizedQuery = {
+    namespace: namespace || '',
+    metricName: metricName || '',
+    expression: expression || '',
+    dimensions: dimensions || {},
+    region: region || 'default',
+    id: id || '',
+    alias: alias || '',
+    statistics: isEmpty(statistics) ? ['Average'] : statistics,
+    period: period || '',
+    ...rest,
+  };
+  return !rest.hasOwnProperty('matchExact') ? { ...normalizedQuery, matchExact: true } : normalizedQuery;
 };
 
 export class MetricsQueryEditor extends PureComponent<Props, State> {
@@ -73,15 +102,16 @@ export class MetricsQueryEditor extends PureComponent<Props, State> {
   }
 
   render() {
-    const { data, query, onRunQuery } = this.props;
-    const metricsQuery = query as CloudWatchMetricsQuery;
+    const { data, onRunQuery } = this.props;
+    const metricsQuery = this.props.query as CloudWatchMetricsQuery;
     const { showMeta } = this.state;
+    const query = normalizeQuery(metricsQuery);
     const metaDataExist = data && Object.values(data).length && data.state === 'Done';
 
     return (
       <>
-        <MetricsQueryFieldsEditor {...this.props}></MetricsQueryFieldsEditor>
-        {metricsQuery.statistics.length <= 1 && (
+        <MetricsQueryFieldsEditor {...{ ...this.props, query }}></MetricsQueryFieldsEditor>
+        {query.statistics.length <= 1 && (
           <div className="gf-form-inline">
             <div className="gf-form">
               <QueryField
@@ -95,7 +125,7 @@ export class MetricsQueryEditor extends PureComponent<Props, State> {
                     this.onChange({ ...metricsQuery, id: event.target.value })
                   }
                   validationEvents={idValidationEvents}
-                  value={query.id || ''}
+                  value={query.id}
                 />
               </QueryField>
             </div>
@@ -108,7 +138,7 @@ export class MetricsQueryEditor extends PureComponent<Props, State> {
                 <Input
                   className="gf-form-input"
                   onBlur={onRunQuery}
-                  value={query.expression || ''}
+                  value={query.expression}
                   onChange={(event: ChangeEvent<HTMLInputElement>) =>
                     this.onChange({ ...metricsQuery, expression: event.target.value })
                   }
@@ -122,7 +152,7 @@ export class MetricsQueryEditor extends PureComponent<Props, State> {
             <QueryField label="Period" tooltip="Minimum interval between points in seconds">
               <Input
                 className="gf-form-input width-8"
-                value={metricsQuery.period || ''}
+                value={query.period || ''}
                 placeholder="auto"
                 onBlur={onRunQuery}
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
@@ -181,7 +211,7 @@ export class MetricsQueryEditor extends PureComponent<Props, State> {
                 </tr>
               </thead>
               <tbody>
-                {data.series[0].meta.gmdMeta.map(({ ID, Expression, Period }: any) => (
+                {data?.series[0]?.meta?.gmdMeta.map(({ ID, Expression, Period }: any) => (
                   <tr key={ID}>
                     <td>{ID}</td>
                     <td>{Expression}</td>
