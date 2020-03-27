@@ -16,7 +16,6 @@ import {
   LogsMetaKind,
   LogsDedupStrategy,
   GraphSeriesXY,
-  dateTime,
   toUtc,
   NullValueMode,
   toDataFrame,
@@ -136,9 +135,7 @@ export function makeSeriesForLogs(rows: LogRowModel[], intervalMs: number, timeZ
   }
 
   return seriesList.map((series, i) => {
-    series.datapoints.sort((a: number[], b: number[]) => {
-      return a[1] - b[1];
-    });
+    series.datapoints.sort((a: number[], b: number[]) => a[1] - b[1]);
 
     // EEEP: converts GraphSeriesXY to DataFrame and back again!
     const data = toDataFrame(series);
@@ -302,7 +299,7 @@ export function logSeriesToLogsModel(logSeries: DataFrame[]): LogsModel | undefi
 
     for (let j = 0; j < series.length; j++) {
       const ts = timeField.values.get(j);
-      const time = dateTime(ts);
+      const time = toUtc(ts).local();
 
       const messageValue: unknown = stringField.values.get(j);
       // This should be string but sometimes isn't (eg elastic) because the dataFrame is not strongly typed.
