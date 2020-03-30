@@ -8,7 +8,7 @@ export enum IconSide {
 interface Props extends React.HTMLAttributes<HTMLDivElement> {
   splitted: boolean;
   title: string;
-  onClick?: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
+  onClick?: () => void;
   buttonClassName?: string;
   iconClassName?: string;
   iconSide?: IconSide;

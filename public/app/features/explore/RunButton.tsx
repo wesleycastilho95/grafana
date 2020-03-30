@@ -51,7 +51,7 @@ export function RunButton(props: Props) {
       onMouseUp={handleMouseUp}
       onMouseDown={handleMouseDown}
       buttonClassName={classNames({
-        'navbar-button--secondary': !loading,
+        'navbar-button--primary': !loading,
         'navbar-button--danger': loading,
         'btn--radius-right-0': showDropdown,
       })}
@@ -64,7 +64,7 @@ export function RunButton(props: Props) {
       <RefreshPicker
         onIntervalChanged={onChangeRefreshInterval}
         value={refreshInterval}
-        buttonSelectClassName={`${loading ? 'navbar-button--danger' : 'navbar-button--secondary'} ${
+        buttonSelectClassName={`${loading ? 'navbar-button--danger' : 'navbar-button--primary'} ${
           styles.selectButtonOverride
         }`}
         refreshButton={runButton}

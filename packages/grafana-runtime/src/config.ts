@@ -20,6 +20,7 @@ interface FeatureToggles {
   meta: boolean;
   cloudwatchLogs: boolean;
   newVariables: boolean;
+  tracingIntegration: boolean;
 }
 
 interface LicenseInfo {
@@ -73,6 +74,7 @@ export class GrafanaBootConfig {
     meta: false,
     cloudwatchLogs: false,
     newVariables: false,
+    tracingIntegration: false,
   };
   licenseInfo: LicenseInfo = {} as LicenseInfo;
   phantomJSRenderer = false;
