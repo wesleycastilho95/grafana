@@ -4,6 +4,7 @@ import { css } from 'emotion';
 import { DataFrame } from '@grafana/data';
 import { JSONFormatter } from '../JSONFormatter/JSONFormatter';
 import { GrafanaTheme } from '@grafana/data';
+import { Icon } from '../Icon/Icon';
 
 interface TransformationRowProps {
   name: string;
@@ -65,10 +66,10 @@ export const TransformationRow = ({ onRemove, editor, name, input }: Transformat
         <div className={styles.name}>{name}</div>
         <div className={styles.iconRow}>
           <div onClick={() => setViewDebug(!viewDebug)} className={styles.icon}>
-            <i className="fa fa-fw fa-bug" />
+            <Icon name="bug" />
           </div>
           <div onClick={onRemove} className={styles.icon}>
-            <i className="fa fa-fw fa-trash" />
+            <Icon name="trash-alt" />
           </div>
         </div>
       </div>

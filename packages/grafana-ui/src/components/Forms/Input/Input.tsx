@@ -5,6 +5,7 @@ import { getFocusStyle, inputSizes, sharedInputStyle } from '../commonStyles';
 import { stylesFactory, useTheme } from '../../../themes';
 import { useClientRect } from '../../../utils/useClientRect';
 import { FormInputSize } from '../types';
+import { Icon } from '../../Icon/Icon';
 
 export interface Props extends Omit<HTMLProps<HTMLInputElement>, 'prefix' | 'size'> {
   /** Show an invalid state around the input */
@@ -245,7 +246,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>((props, ref) => {
 
         {(suffix || loading) && (
           <div className={styles.suffix} ref={suffixRef}>
-            {loading && <i className={cx('fa fa-spinner fa-spin', styles.loadingIndicator)} />}
+            {loading && <Icon className={cx('fa-spin', styles.loadingIndicator)} name="fa fa-spinner" />}
             {suffix}
           </div>
         )}
