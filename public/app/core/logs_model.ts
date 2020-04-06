@@ -24,6 +24,7 @@ import {
   getFlotPairs,
   TimeZone,
   getDisplayProcessor,
+  dateTime,
 } from '@grafana/data';
 import { getThemeColor } from 'app/core/utils/colors';
 import { hasAnsiCodes } from 'app/core/utils/text';
@@ -223,17 +224,19 @@ export function dataFrameToLogsModel(dataFrame: DataFrame[], intervalMs: number,
   };
 }
 
-function separateLogsAndMetrics(dataFrame: DataFrame[]) {
+function separateLogsAndMetrics(dataFrames: DataFrame[]) {
   const metricSeries: DataFrame[] = [];
   const logSeries: DataFrame[] = [];
 
-  for (const series of dataFrame) {
-    if (isLogsData(series)) {
-      logSeries.push(series);
+  for (const dataFrame of dataFrames) {
+    if (isLogsData(dataFrame)) {
+      logSeries.push(dataFrame);
       continue;
     }
 
-    metricSeries.push(series);
+    if (dataFrame.length > 0) {
+      metricSeries.push(dataFrame);
+    }
   }
 
   return { logSeries, metricSeries };
@@ -299,7 +302,7 @@ export function logSeriesToLogsModel(logSeries: DataFrame[]): LogsModel | undefi
 
     for (let j = 0; j < series.length; j++) {
       const ts = timeField.values.get(j);
-      const time = toUtc(ts).local();
+      const time = dateTime(ts);
 
       const messageValue: unknown = stringField.values.get(j);
       // This should be string but sometimes isn't (eg elastic) because the dataFrame is not strongly typed.

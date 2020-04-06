@@ -1,13 +1,15 @@
 package cloudwatch
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
-func logsResultsToDataframes(response *cloudwatchlogs.GetQueryResultsOutput) *data.Frame {
+func logsResultsToDataframes(response *cloudwatchlogs.GetQueryResultsOutput) (*data.Frame, error) {
 	rowCount := len(response.Results)
-	fieldValues := make(map[string][]*string)
+	fieldValues := make(map[string]interface{})
 	for i, row := range response.Results {
 		for _, resultField := range row {
 			// Strip @ptr field from results as it's not really needed
@@ -15,11 +17,24 @@ func logsResultsToDataframes(response *cloudwatchlogs.GetQueryResultsOutput) *da
 				continue
 			}
 
-			if _, exists := fieldValues[*resultField.Field]; !exists {
-				fieldValues[*resultField.Field] = make([]*string, rowCount)
-			}
+			if *resultField.Field == "@timestamp" {
+				if _, exists := fieldValues[*resultField.Field]; !exists {
+					fieldValues[*resultField.Field] = make([]*time.Time, rowCount)
+				}
 
-			fieldValues[*resultField.Field][i] = resultField.Value
+				parsedTime, err := time.Parse("2006-01-02 15:04:05.000", *resultField.Value)
+				if err != nil {
+					return nil, err
+				}
+
+				fieldValues[*resultField.Field].([]*time.Time)[i] = &parsedTime
+			} else {
+				if _, exists := fieldValues[*resultField.Field]; !exists {
+					fieldValues[*resultField.Field] = make([]*string, rowCount)
+				}
+
+				fieldValues[*resultField.Field].([]*string)[i] = resultField.Value
+			}
 		}
 	}
 
@@ -29,6 +44,8 @@ func logsResultsToDataframes(response *cloudwatchlogs.GetQueryResultsOutput) *da
 
 		if fieldName == "@timestamp" {
 			newFields[len(newFields)-1].SetConfig(&data.FieldConfig{Title: "Time"})
+		} else if fieldName == "@logStream" || fieldName == "@log" {
+			newFields[len(newFields)-1].SetConfig(&data.FieldConfig{Hidden: true})
 		}
 	}
 
@@ -40,5 +57,5 @@ func logsResultsToDataframes(response *cloudwatchlogs.GetQueryResultsOutput) *da
 		},
 	}
 
-	return frame
+	return frame, nil
 }

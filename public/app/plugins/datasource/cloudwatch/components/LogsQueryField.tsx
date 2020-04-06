@@ -1,7 +1,8 @@
 // Libraries
 import React, { ReactNode } from 'react';
+import intersection from 'lodash/intersection';
 
-import { QueryField, SlatePrism, Forms, TypeaheadInput, TypeaheadOutput, BracesPlugin } from '@grafana/ui';
+import { QueryField, SlatePrism, Forms, FormField, TypeaheadInput, TypeaheadOutput, BracesPlugin } from '@grafana/ui';
 
 // Utils & Services
 // dom also includes Element polyfills
@@ -29,8 +30,16 @@ const containerClass = css`
   min-height: 35px;
 `;
 
+const rowGap = css`
+  gap: 3px;
+`;
+
 interface State {
   selectedLogGroups: Array<SelectableValue<string>>;
+  availableLogGroups: Array<SelectableValue<string>>;
+  loadingLogGroups: boolean;
+  regions: Array<SelectableValue<string>>;
+  selectedRegion: SelectableValue<string>;
 }
 
 export class CloudWatchLogsQueryField extends React.PureComponent<CloudWatchLogsQueryFieldProps, State> {
@@ -40,6 +49,16 @@ export class CloudWatchLogsQueryField extends React.PureComponent<CloudWatchLogs
         value: logGroup,
         label: logGroup,
       })) ?? [],
+    availableLogGroups: [],
+    regions: [],
+    selectedRegion: (this.props.query as CloudWatchLogsQuery).region
+      ? {
+          label: (this.props.query as CloudWatchLogsQuery).region,
+          value: (this.props.query as CloudWatchLogsQuery).region,
+          text: (this.props.query as CloudWatchLogsQuery).region,
+        }
+      : { label: 'default', value: 'default', text: 'default' },
+    loadingLogGroups: false,
   };
 
   plugins: Plugin[];
@@ -57,16 +76,55 @@ export class CloudWatchLogsQueryField extends React.PureComponent<CloudWatchLogs
     ];
   }
 
+  fetchLogGroupOptions = async (region: string) => {
+    try {
+      const logGroups: string[] = await this.props.datasource.describeLogGroups({
+        refId: this.props.query.refId,
+        region,
+      });
+
+      return logGroups.map(logGroup => ({
+        value: logGroup,
+        label: logGroup,
+      }));
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  };
+
+  componentWillMount = () => {
+    const { datasource, query } = this.props;
+
+    this.setState({
+      loadingLogGroups: true,
+    });
+
+    this.fetchLogGroupOptions(query.region).then(logGroups => {
+      this.setState({
+        loadingLogGroups: false,
+        availableLogGroups: logGroups,
+      });
+    });
+
+    datasource.getRegions().then(regions => {
+      this.setState({
+        regions,
+      });
+    });
+  };
+
   onChangeQuery = (value: string, override?: boolean) => {
     // Send text change to parent
     const { query, onChange, onRunQuery } = this.props;
-    const { selectedLogGroups } = this.state;
+    const { selectedLogGroups, selectedRegion } = this.state;
 
     if (onChange) {
       const nextQuery = {
         ...query,
         expression: value,
         logGroupNames: selectedLogGroups?.map(logGroupName => logGroupName.value) ?? [],
+        region: selectedRegion.value,
       };
       onChange(nextQuery);
 
@@ -76,30 +134,66 @@ export class CloudWatchLogsQueryField extends React.PureComponent<CloudWatchLogs
     }
   };
 
-  loadAsyncOptions = async (logGroupNamePrefix: string) => {
-    const logGroups: string[] = await this.props.datasource.describeLogGroups({
-      logGroupNamePrefix,
-      refId: this.props.query.refId,
-    });
+  // loadAsyncOptions = async () => {
+  //   const logGroups: string[] = await this.props.datasource.describeLogGroups({
+  //     refId: this.props.query.refId,
+  //   });
 
-    // setCascaderOptions(
-    //   logGroups.map(logGroup => ({
-    //     label: logGroup,
-    //     value: logGroup,
-    //     isLeaf: false,
-    //   }))
-    // );
+  //   // setCascaderOptions(
+  //   //   logGroups.map(logGroup => ({
+  //   //     label: logGroup,
+  //   //     value: logGroup,
+  //   //     isLeaf: false,
+  //   //   }))
+  //   // );
 
-    return logGroups.map(logGroup => ({
-      value: logGroup,
-      label: logGroup,
-    }));
-  };
+  //   return logGroups.map(logGroup => ({
+  //     value: logGroup,
+  //     label: logGroup,
+  //   }));
+  // };
 
   setSelectedLogGroups = (v: Array<SelectableValue<string>>) => {
     this.setState({
       selectedLogGroups: v,
     });
+
+    const { onChange, query } = this.props;
+
+    if (onChange) {
+      const nextQuery = {
+        ...query,
+        logGroupNames: v.map(logGroupName => logGroupName.value) ?? [],
+      };
+
+      onChange(nextQuery);
+    }
+  };
+
+  setSelectedRegion = async (v: SelectableValue<string>) => {
+    this.setState({
+      selectedRegion: v,
+      loadingLogGroups: true,
+    });
+
+    const logGroups = await this.fetchLogGroupOptions(v.value);
+
+    this.setState(state => ({
+      availableLogGroups: logGroups,
+      selectedLogGroups: intersection(state.selectedLogGroups, logGroups),
+      loadingLogGroups: false,
+    }));
+
+    const { onChange, query } = this.props;
+
+    if (onChange) {
+      const nextQuery = {
+        ...query,
+        region: v.value,
+      };
+
+      onChange(nextQuery);
+    }
   };
 
   onTypeahead = async (typeahead: TypeaheadInput): Promise<TypeaheadOutput> => {
@@ -126,7 +220,7 @@ export class CloudWatchLogsQueryField extends React.PureComponent<CloudWatchLogs
 
   render() {
     const { ExtraFieldElement, data, query, syntaxLoaded, datasource } = this.props;
-    const { selectedLogGroups } = this.state;
+    const { selectedLogGroups, availableLogGroups, regions, selectedRegion, loadingLogGroups } = this.state;
 
     const showError = data && data.error && data.error.refId === query.refId;
     const cleanText = datasource.languageProvider ? datasource.languageProvider.cleanText : undefined;
@@ -146,18 +240,41 @@ export class CloudWatchLogsQueryField extends React.PureComponent<CloudWatchLogs
 
     return (
       <>
-        <div className="gf-form gf-form--grow flex-grow-1">
-          <Forms.AsyncMultiSelect
-            loadOptions={this.loadAsyncOptions}
-            value={selectedLogGroups}
-            onChange={v => {
-              this.setSelectedLogGroups(v);
-            }}
-            className={containerClass}
-            closeMenuOnSelect={false}
-            isClearable={true}
-            isOptionDisabled={() => selectedLogGroups.length >= MAX_LOG_GROUPS}
-            defaultOptions
+        <div className={`gf-form-inline gf-form--grow flex-grow-1 ${rowGap}`}>
+          <FormField
+            label="Region"
+            labelWidth={4}
+            inputEl={
+              <Forms.Select
+                options={regions}
+                value={selectedRegion}
+                onChange={v => this.setSelectedRegion(v)}
+                width={9}
+                placeholder="Choose Region"
+              />
+            }
+          />
+
+          <FormField
+            label="Log Groups"
+            labelWidth={6}
+            className="flex-grow-1"
+            inputEl={
+              <Forms.MultiSelect
+                options={availableLogGroups}
+                value={selectedLogGroups}
+                onChange={v => {
+                  this.setSelectedLogGroups(v);
+                }}
+                className={containerClass}
+                closeMenuOnSelect={false}
+                isClearable={true}
+                isOptionDisabled={() => selectedLogGroups.length >= MAX_LOG_GROUPS}
+                placeholder="Choose Log Groups"
+                noOptionsMessage="No log groups available"
+                isLoading={loadingLogGroups}
+              />
+            }
           />
         </div>
         <div className="gf-form-inline gf-form-inline--nowrap flex-grow-1">
@@ -173,6 +290,7 @@ export class CloudWatchLogsQueryField extends React.PureComponent<CloudWatchLogs
               placeholder="Enter a CloudWatch Logs Insights query"
               portalOrigin="cloudwatch"
               syntaxLoaded={syntaxLoaded}
+              disabled={loadingLogGroups || selectedLogGroups.length === 0}
             />
           </div>
           {ExtraFieldElement}

@@ -52,6 +52,8 @@ export interface FieldConfig {
   // Panel Specific Values
   custom?: Record<string, any>;
 
+  hidden?: boolean;
+
   scopedVars?: ScopedVars;
 }
 

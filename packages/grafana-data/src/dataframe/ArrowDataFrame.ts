@@ -1,5 +1,5 @@
 import { DataFrame, FieldType, Field, Vector } from '../types';
-import { guessFieldTypes } from '@grafana/data';
+
 import {
   Table,
   ArrowType,
@@ -167,21 +167,14 @@ export function resultsToDataFrames(rsp: any): DataFrame[] {
     return [];
   }
 
-  const frames: DataFrame[] = [];
-  for (const res of Object.values(rsp.results)) {
-    const r = res as any;
-    if (r.dataframes) {
-      for (const b of r.dataframes) {
-        const t = base64StringToArrowTable(b as string);
-        const newFrame = guessFieldTypes(arrowTableToDataFrame(t), true);
-        const timeField = newFrame.fields.find(field => field.name === '@timestamp');
-        if (timeField) {
-          timeField.type = FieldType.time;
-        }
-        frames.push(newFrame);
-      }
+  const results = rsp.results as Array<{ dataframes: string[] }>;
+  const frames: DataFrame[] = Object.values(results).flatMap(res => {
+    if (!res.dataframes) {
+      return [];
     }
-  }
+
+    return res.dataframes.map((b: string) => arrowTableToDataFrame(base64StringToArrowTable(b)));
+  });
 
   return frames;
 }

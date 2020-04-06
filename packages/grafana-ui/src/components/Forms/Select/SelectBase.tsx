@@ -68,7 +68,9 @@ export function SelectBase<T>({
   allowCustomValue = false,
   autoFocus = false,
   backspaceRemovesValue = true,
+  cacheOptions,
   className,
+  closeMenuOnSelect = true,
   components,
   defaultOptions,
   defaultValue,
@@ -144,6 +146,7 @@ export function SelectBase<T>({
     autoFocus,
     backspaceRemovesValue,
     captureMenuScroll: false,
+    closeMenuOnSelect,
     defaultValue,
     // Also passing disabled, as this is the new Select API, and I want to use this prop instead of react-select's one
     disabled,
@@ -195,6 +198,7 @@ export function SelectBase<T>({
     ReactSelectComponent = allowCustomValue ? AsyncCreatable : ReactAsyncSelect;
     asyncSelectProps = {
       loadOptions,
+      cacheOptions,
       defaultOptions,
     };
   }

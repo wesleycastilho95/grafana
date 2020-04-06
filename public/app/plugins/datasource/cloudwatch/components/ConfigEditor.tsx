@@ -55,9 +55,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
   async loadRegions() {
     await getDatasourceSrv()
       .loadDatasource(this.props.options.name)
-      .then((ds: CloudWatchDatasource) => {
-        return ds.getRegions();
-      })
+      .then((ds: CloudWatchDatasource) => ds.getRegions())
       .then(
         (regions: any) => {
           this.setState({
@@ -99,12 +97,10 @@ export class ConfigEditor extends PureComponent<Props, State> {
           ];
 
           this.setState({
-            regions: regions.map((region: string) => {
-              return {
-                value: region,
-                label: region,
-              };
-            }),
+            regions: regions.map((region: string) => ({
+              value: region,
+              label: region,
+            })),
           });
 
           // expected to fail when creating new datasource

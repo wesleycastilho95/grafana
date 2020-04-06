@@ -41,6 +41,9 @@ type FieldConfig struct {
 	// Alternative to empty string
 	NoValue string `json:"noValue,omitempty"`
 
+	// If field should not be displayed
+	Hidden bool `json:"hidden,omitempty"`
+
 	// Panel Specific Values
 	Custom map[string]interface{} `json:"custom,omitempty"`
 }

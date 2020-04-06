@@ -42,7 +42,7 @@ func GetCredentials(dsInfo *DatasourceInfo) (*credentials.Credentials, error) {
 	}
 	credentialCacheLock.RUnlock()
 
-	accessKeyId := ""
+	accessKeyID := ""
 	secretAccessKey := ""
 	sessionToken := ""
 	var expiration *time.Time = nil
@@ -78,7 +78,7 @@ func GetCredentials(dsInfo *DatasourceInfo) (*credentials.Credentials, error) {
 			return nil, err
 		}
 		if resp.Credentials != nil {
-			accessKeyId = *resp.Credentials.AccessKeyId
+			accessKeyID = *resp.Credentials.AccessKeyId
 			secretAccessKey = *resp.Credentials.SecretAccessKey
 			sessionToken = *resp.Credentials.SessionToken
 			expiration = resp.Credentials.Expiration
@@ -96,7 +96,7 @@ func GetCredentials(dsInfo *DatasourceInfo) (*credentials.Credentials, error) {
 	creds := credentials.NewChainCredentials(
 		[]credentials.Provider{
 			&credentials.StaticProvider{Value: credentials.Value{
-				AccessKeyID:     accessKeyId,
+				AccessKeyID:     accessKeyID,
 				SecretAccessKey: secretAccessKey,
 				SessionToken:    sessionToken,
 			}},

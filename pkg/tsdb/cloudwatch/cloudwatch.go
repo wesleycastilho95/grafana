@@ -4,10 +4,11 @@ import (
 	"context"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
+	//"github.com/aws/aws-sdk-go/service/cloudwatchlogs/cloudwatchlogsiface"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
 	"github.com/grafana/grafana/pkg/components/null"
@@ -22,7 +23,8 @@ type CloudWatchExecutor struct {
 	ec2Svc  ec2iface.EC2API
 	rgtaSvc resourcegroupstaggingapiiface.ResourceGroupsTaggingAPIAPI
 
-	logsClient cloudwatchlogsiface.CloudWatchLogsAPI
+	logsClientsByRegion map[string](*cloudwatchlogs.CloudWatchLogs)
+	mux                 sync.Mutex
 }
 
 type DatasourceInfo struct {
@@ -36,16 +38,40 @@ type DatasourceInfo struct {
 	SecretKey string
 }
 
-func NewCloudWatchExecutor(datasource *models.DataSource) (tsdb.TsdbQueryEndpoint, error) {
-	dsInfo := retrieveDsInfo(datasource, "default")
-	logsClient, err := retrieveLogsClient(dsInfo)
+func (e *CloudWatchExecutor) getLogsClient(region string) (*cloudwatchlogs.CloudWatchLogs, error) {
+	e.mux.Lock()
+	defer e.mux.Unlock()
+
+	if logsClient, ok := e.logsClientsByRegion[region]; ok {
+		return logsClient, nil
+	}
+
+	dsInfo := retrieveDsInfo(e.DataSource, region)
+	newLogsClient, err := retrieveLogsClient(dsInfo)
 
 	if err != nil {
 		return nil, err
 	}
 
+	e.logsClientsByRegion[region] = newLogsClient
+
+	return newLogsClient, nil
+}
+
+func NewCloudWatchExecutor(datasource *models.DataSource) (tsdb.TsdbQueryEndpoint, error) {
+	dsInfo := retrieveDsInfo(datasource, "default")
+	defaultLogsClient, err := retrieveLogsClient(dsInfo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	logsClientsByRegion := make(map[string](*cloudwatchlogs.CloudWatchLogs), 0)
+	logsClientsByRegion[dsInfo.Region] = defaultLogsClient
+	logsClientsByRegion["default"] = defaultLogsClient
+
 	return &CloudWatchExecutor{
-		logsClient: logsClient,
+		logsClientsByRegion: logsClientsByRegion,
 	}, nil
 }
 
@@ -60,12 +86,12 @@ func init() {
 	aliasFormat = regexp.MustCompile(`\{\{\s*(.+?)\s*\}\}`)
 }
 
-func (e *CloudWatchExecutor) AlertQuery(ctx context.Context, queryContext *tsdb.TsdbQuery) (*cloudwatchlogs.GetQueryResultsOutput, error) {
+func (e *CloudWatchExecutor) AlertQuery(logsClient *cloudwatchlogs.CloudWatchLogs, ctx context.Context, queryContext *tsdb.TsdbQuery) (*cloudwatchlogs.GetQueryResultsOutput, error) {
 	const MaxAttempts = 5
 	const PollPeriod = 500 * time.Millisecond
 
 	queryParams := queryContext.Queries[0].Model
-	startQueryOutput, err := e.executeStartQuery(queryParams, queryContext.TimeRange)
+	startQueryOutput, err := e.executeStartQuery(ctx, logsClient, queryParams, queryContext.TimeRange)
 
 	if err != nil {
 		return nil, err
@@ -81,7 +107,7 @@ func (e *CloudWatchExecutor) AlertQuery(ctx context.Context, queryContext *tsdb.
 
 	attemptCount := 0
 	for range ticker.C {
-		if res, err := e.executeGetQueryResults(requestParams); err != nil {
+		if res, err := e.executeGetQueryResults(ctx, logsClient, requestParams); err != nil {
 			return nil, err
 		} else if isTerminated(*res.Status) || attemptCount > MaxAttempts {
 			return res, err
@@ -114,7 +140,7 @@ func (e *CloudWatchExecutor) Query(ctx context.Context, dsInfo *models.DataSourc
 	case "annotationQuery":
 		result, err = e.executeAnnotationQuery(ctx, queryContext)
 	case "logAction":
-		result, err = e.executeLogActions(queryContext)
+		result, err = e.executeLogActions(ctx, queryContext)
 	case "timeSeriesQuery":
 		fallthrough
 	default:
@@ -135,7 +161,12 @@ func (e *CloudWatchExecutor) executeLogAlertQuery(ctx context.Context, queryCont
 		queryParams.Set("region", region)
 	}
 
-	result, err := e.executeStartQuery(queryParams, queryContext.TimeRange)
+	logsClient, err := e.getLogsClient(region)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := e.executeStartQuery(ctx, logsClient, queryParams, queryContext.TimeRange)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +174,7 @@ func (e *CloudWatchExecutor) executeLogAlertQuery(ctx context.Context, queryCont
 	queryParams.Set("queryId", *result.QueryId)
 
 	// Get Query Results
-	resp, err := e.AlertQuery(ctx, queryContext)
+	resp, err := e.AlertQuery(logsClient, ctx, queryContext)
 	if err != nil {
 		return nil, err
 	}
