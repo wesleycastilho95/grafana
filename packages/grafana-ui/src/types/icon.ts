@@ -12,11 +12,15 @@ export type IconName =
   | 'angle-left'
   | 'angle-right'
   | 'pen'
+  | 'envelope'
   | 'percentage'
   | 'plane'
   | 'power'
   | 'trash-alt'
+  | 'slack'
   | 'download-alt'
+  | 'mobile-android'
+  | 'slack'
   | 'plus-square'
   | 'folder-plus'
   | 'folder-open'
@@ -191,6 +195,7 @@ export const getAvailableIcons = (): IconName[] => [
   'import',
   'folder-open',
   'file-copy-alt',
+  'file-alt',
   'arrow-down',
   'filter',
   'arrow-up',

@@ -25,15 +25,13 @@ const getIconStyles = stylesFactory((theme: GrafanaTheme, type: IconType) => {
   return {
     container: css`
       display: inline-block;
+      fill: ${defaultIconColor};
     `,
     icon: css`
       vertical-align: middle;
       display: inline-block;
-      margin-bottom: ${theme.spacing.xxs};
+      margin-bottom: 2px;
       cursor: pointer;
-      * {
-        fill: ${defaultIconColor};
-      }
     `,
   };
 });
@@ -73,6 +71,7 @@ Icon.displayName = 'Icon';
 
 /* Transform string with px to number and add 2 pxs as path in svg is 2px smaller */
 const getSvgSize = (size: ComponentSize | 'xl' | 'xxl', theme: GrafanaTheme) => {
+  console.log(theme);
   let svgSize;
   if (size === 'xl') {
     svgSize = Number(theme.typography.heading.h1.slice(0, -2));
